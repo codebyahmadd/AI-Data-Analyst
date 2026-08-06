@@ -10,7 +10,7 @@ from utils.chart_generator import (
     create_bar_chart,
     create_pie_chart,
 )
-
+from utils.ai_insights import generate_insights
 
 # -----------------------------
 # Page Configuration
@@ -144,3 +144,14 @@ if uploaded_file is not None:
     else:
 
         st.warning("⚠️ No suitable columns found for visualization.")
+        st.divider()
+
+    # -----------------------------
+    # AI Insights
+    # -----------------------------
+    st.subheader("🤖 AI Insights")
+
+    insights = generate_insights(df)
+
+    for insight in insights:
+        st.write(insight)
