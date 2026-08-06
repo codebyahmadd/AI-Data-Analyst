@@ -3,6 +3,7 @@ import streamlit as st
 from utils.data_loader import load_csv
 from utils.data_summary import get_dataset_info
 from utils.data_cleaner import clean_data
+from components.header import show_header
 
 
 # -----------------------------
@@ -18,19 +19,7 @@ st.set_page_config(
 # -----------------------------
 # Header
 # -----------------------------
-st.title("🤖 AI Data Analyst")
-
-st.markdown(
-    """
-    Welcome to **AI Data Analyst**.
-
-    Upload your CSV file and let AI analyze your data automatically.
-    """
-)
-
-st.info("🚀 Project setup completed successfully. Development has officially started!")
-
-st.divider()
+show_header()
 
 
 # -----------------------------
