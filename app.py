@@ -3,7 +3,8 @@ import streamlit as st
 from utils.data_loader import load_csv
 from utils.data_summary import get_dataset_info
 from utils.data_cleaner import clean_data
-from components.header import show_header
+from utils.components.header import show_header
+from utils.components.sidebar import show_sidebar
 
 
 # -----------------------------
@@ -20,6 +21,7 @@ st.set_page_config(
 # Header
 # -----------------------------
 show_header()
+show_sidebar()
 
 
 # -----------------------------
