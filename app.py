@@ -5,6 +5,11 @@ from utils.data_summary import get_dataset_info
 from utils.data_cleaner import clean_data
 from utils.components.header import show_header
 from utils.components.sidebar import show_sidebar
+from utils.chart_generator import (
+    get_chart_columns,
+    create_bar_chart,
+    create_pie_chart,
+)
 
 
 # -----------------------------
@@ -88,7 +93,7 @@ if uploaded_file is not None:
 
     st.divider()
 
-    # -----------------------------
+       # -----------------------------
     # Data Cleaning
     # -----------------------------
     st.subheader("🧹 Data Cleaning")
@@ -104,3 +109,38 @@ if uploaded_file is not None:
             use_container_width=True,
             hide_index=True
         )
+
+    st.divider()
+
+    # -----------------------------
+    # Interactive Charts
+    # -----------------------------
+    st.subheader("📊 Interactive Data Visualization")
+
+    chart_type = st.selectbox(
+        "Select Chart Type",
+        ["Bar Chart", "Pie Chart"]
+    )
+
+    chart_columns = get_chart_columns(df)
+
+    if  chart_columns:
+
+     column = st.selectbox(
+        "Select Column",
+        chart_columns
+    )
+
+    if chart_type == "Bar Chart":
+
+        fig = create_bar_chart(df, column)
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Pie Chart":
+
+        fig = create_pie_chart(df, column)
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+
+        st.warning("⚠️ No suitable columns found for visualization.")
