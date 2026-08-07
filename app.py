@@ -64,4 +64,4 @@ if uploaded_file is not None:
         show_insights(df)
 
     with reports_tab:
-        show_reports()
+     show_reports(df)
