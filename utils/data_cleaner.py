@@ -3,17 +3,8 @@ import pandas as pd
 
 def clean_data(df):
     """
-    Perform basic data cleaning on the dataset.
-
-    Operations:
-        - Remove duplicate rows.
-        - Replace missing values with "N/A".
-
-    Parameters:
-        df (pandas.DataFrame): Input dataset.
-
-    Returns:
-        pandas.DataFrame: Cleaned dataset.
+    Clean the dataset by removing duplicates
+    and filling missing values.
     """
 
     cleaned_df = df.copy()
@@ -21,7 +12,7 @@ def clean_data(df):
     # Remove duplicate rows
     cleaned_df = cleaned_df.drop_duplicates()
 
-    # Replace missing values
+    # Fill missing values
     cleaned_df = cleaned_df.fillna("N/A")
 
     return cleaned_df

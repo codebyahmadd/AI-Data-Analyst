@@ -40,6 +40,7 @@ def show_overview(df):
     rows = df.shape[0]
     columns = df.shape[1]
     missing_values = int(df.isnull().sum().sum())
+
     memory_usage = round(
         df.memory_usage(deep=True).sum() / 1024,
         2
@@ -207,4 +208,18 @@ def show_overview(df):
             cleaned_df.head(),
             use_container_width=True,
             hide_index=True
+        )
+
+        # -----------------------------
+        # Download Cleaned Dataset
+        # -----------------------------
+        csv_data = cleaned_df.to_csv(
+            index=False
+        ).encode("utf-8")
+
+        st.download_button(
+            label="📥 Download Cleaned CSV",
+            data=csv_data,
+            file_name="cleaned_dataset.csv",
+            mime="text/csv"
         )
