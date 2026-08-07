@@ -160,3 +160,33 @@ def create_box_plot(df, column):
     )
 
     return fig
+def create_correlation_heatmap(df):
+    """
+    Create a correlation heatmap for numeric columns.
+    """
+
+    numeric_df = df.select_dtypes(include="number")
+
+    if numeric_df.shape[1] < 2:
+        return None
+
+    correlation = numeric_df.corr()
+
+    fig = px.imshow(
+        correlation,
+        text_auto=".2f",
+        aspect="auto",
+        title="Correlation Heatmap",
+        color_continuous_scale="RdBu_r",
+        zmin=-1,
+        zmax=1
+    )
+
+    fig.update_layout(
+        template="plotly_white",
+        title_x=0.5,
+        xaxis_title="Columns",
+        yaxis_title="Columns"
+    )
+
+    return fig

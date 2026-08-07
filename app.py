@@ -2,13 +2,13 @@ import streamlit as st
 
 from utils.data_loader import load_csv
 
-from utils.ai_insights import generate_insights
-
 from utils.components.header import show_header
 from utils.components.sidebar import show_sidebar
 
 from pages.overview import show_overview
 from pages.visualization import show_visualization
+from pages.insights import show_insights
+from pages.reports import show_reports
 
 
 # -----------------------------
@@ -38,31 +38,30 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    # Load Dataset
     df = load_csv(uploaded_file)
 
     st.success("✅ Dataset loaded successfully.")
 
     # -----------------------------
-    # Overview
+    # Professional Tabs
     # -----------------------------
-    show_overview(df)
+    overview_tab, visualization_tab, insights_tab, reports_tab = st.tabs(
+        [
+            "📊 Overview",
+            "📈 Visualization",
+            "🤖 AI Insights",
+            "📄 Reports"
+        ]
+    )
 
-    st.divider()
+    with overview_tab:
+        show_overview(df)
 
-    # -----------------------------
-    # Visualization
-    # -----------------------------
-    show_visualization(df)
+    with visualization_tab:
+        show_visualization(df)
 
-    st.divider()
+    with insights_tab:
+        show_insights(df)
 
-    # -----------------------------
-    # AI Insights
-    # -----------------------------
-    st.subheader("🤖 AI Insights")
-
-    insights = generate_insights(df)
-
-    for insight in insights:
-        st.write(insight)
+    with reports_tab:
+        show_reports()
