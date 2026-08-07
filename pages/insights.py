@@ -1,11 +1,12 @@
 import streamlit as st
 
 from utils.ai_insights import generate_insights
+from reports.report_generator import generate_report
 
 
 def show_insights(df):
     """
-    Display AI generated insights.
+    Display AI generated insights and downloadable report.
     """
 
     st.subheader("🤖 AI Insights")
@@ -39,3 +40,22 @@ def show_insights(df):
 
         else:
             st.info(insight)
+
+    st.divider()
+
+    # -----------------------------
+    # Analysis Report
+    # -----------------------------
+    st.subheader("📄 Analysis Report")
+
+    report = generate_report(
+        df,
+        insights
+    )
+
+    st.download_button(
+        label="📥 Download Analysis Report",
+        data=report,
+        file_name="AI_Data_Analysis_Report.txt",
+        mime="text/plain"
+    )
