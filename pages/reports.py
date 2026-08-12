@@ -17,45 +17,133 @@ def show_reports(df):
         "based on your uploaded dataset."
     )
 
-    # -----------------------------
-    # Generate Insights
-    # -----------------------------
-    insights = generate_insights(df)
+    # =========================================================
+    # GENERATE AI INSIGHTS
+    # =========================================================
 
-    # -----------------------------
-    # Generate Text Report
-    # -----------------------------
-    report = generate_report(
-        df,
-        insights
-    )
+    try:
+        insights = generate_insights(df)
 
-    # -----------------------------
-    # Generate PDF Report
-    # -----------------------------
-    pdf_report = generate_pdf_report(
-        df,
-        insights
-    )
+    except Exception as e:
+        st.error("❌ Unable to generate AI insights.")
+        st.exception(e)
+        return
 
-    # -----------------------------
-    # Report Preview
-    # -----------------------------
-    st.subheader("📋 Report Preview")
+    # ---------------------------------------------------------
+    # Make sure insights is always a list
+    # ---------------------------------------------------------
 
-    with st.expander("View Report Content"):
-        st.text(report)
+    if insights is None:
+        insights = []
+
+    elif isinstance(insights, str):
+        insights = [insights]
+
+    elif not isinstance(insights, (list, tuple)):
+        try:
+            insights = list(insights)
+        except TypeError:
+            insights = [str(insights)]
+
+    else:
+        insights = list(insights)
+
+    # =========================================================
+    # INSIGHTS SECTION
+    # =========================================================
+
+    st.markdown("### 🤖 AI Insights")
+
+    if len(insights) == 0:
+
+        st.info(
+            "No automatic insights were generated for this dataset."
+        )
+
+    else:
+
+        for index, insight in enumerate(insights, start=1):
+
+            if insight is not None and str(insight).strip():
+
+                st.markdown(
+                    f"**{index}.** {str(insight)}"
+                )
 
     st.divider()
 
-    # -----------------------------
-    # Download Reports
-    # -----------------------------
-    st.subheader("📥 Download Reports")
+    # =========================================================
+    # GENERATE TEXT REPORT
+    # =========================================================
+
+    try:
+
+        report = generate_report(
+            df,
+            insights
+        )
+
+    except Exception as e:
+
+        st.error("❌ Unable to generate the text report.")
+        st.exception(e)
+        return
+
+    # =========================================================
+    # REPORT PREVIEW
+    # =========================================================
+
+    st.markdown("### 📋 Report Preview")
+
+    with st.expander(
+        "👀 View Complete Report",
+        expanded=False
+    ):
+
+        st.code(
+            report,
+            language="text"
+        )
+
+    st.divider()
+
+    # =========================================================
+    # GENERATE PDF REPORT
+    # =========================================================
+
+    try:
+
+        pdf_report = generate_pdf_report(
+            df,
+            insights
+        )
+
+    except Exception as e:
+
+        pdf_report = None
+
+        st.warning(
+            "⚠️ PDF report could not be generated."
+        )
+
+        st.caption(
+            f"PDF error: {e}"
+        )
+
+    # =========================================================
+    # DOWNLOAD REPORTS
+    # =========================================================
+
+    st.markdown("### 📥 Download Reports")
 
     col1, col2 = st.columns(2)
 
+    # ---------------------------------------------------------
+    # TXT DOWNLOAD
+    # ---------------------------------------------------------
+
     with col1:
+
         st.download_button(
             label="📄 Download TXT Report",
             data=report,
@@ -64,11 +152,37 @@ def show_reports(df):
             use_container_width=True
         )
 
+    # ---------------------------------------------------------
+    # PDF DOWNLOAD
+    # ---------------------------------------------------------
+
     with col2:
-        st.download_button(
-            label="📕 Download PDF Report",
-            data=pdf_report,
-            file_name="AI_Data_Analysis_Report.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
+
+        if pdf_report is not None:
+
+            st.download_button(
+                label="📕 Download PDF Report",
+                data=pdf_report,
+                file_name="AI_Data_Analysis_Report.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+
+        else:
+
+            st.button(
+                "📕 PDF Unavailable",
+                disabled=True,
+                use_container_width=True
+            )
+
+    st.divider()
+
+    # =========================================================
+    # REPORT STATUS
+    # =========================================================
+
+    st.success(
+        f"✅ Report generated successfully with "
+        f"{len(insights)} AI insight(s)."
+    )

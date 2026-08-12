@@ -1,171 +1,398 @@
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
+
+def _clean_column(df, column):
+    """
+    Return a cleaned copy of a selected column.
+    Removes missing values.
+    """
+
+    if column not in df.columns:
+        return pd.Series(dtype="object")
+
+    return df[column].dropna()
+
+
+def _apply_chart_layout(fig, title):
+    """
+    Apply a consistent professional layout to Plotly charts.
+    """
+
+    fig.update_layout(
+        title=title,
+        title_x=0.5,
+        template="plotly_white",
+        margin=dict(
+            l=40,
+            r=40,
+            t=70,
+            b=40
+        ),
+        hovermode="closest"
+    )
+
+    return fig
+
+
+# =========================================================
+# GET CATEGORICAL / CHART COLUMNS
+# =========================================================
+
 def get_chart_columns(df, max_unique=20):
     """
     Return columns suitable for categorical charts.
+
+    Columns with a reasonable number of unique values
+    are considered suitable for Bar and Pie charts.
     """
 
     suitable_columns = []
 
     for column in df.columns:
 
-        if df[column].nunique() <= max_unique:
+        # Ignore completely empty columns
+        if df[column].dropna().empty:
+            continue
 
+        unique_count = df[column].nunique(dropna=True)
+
+        if unique_count <= max_unique:
             suitable_columns.append(column)
 
     return suitable_columns
 
 
+# =========================================================
+# GET NUMERIC COLUMNS
+# =========================================================
+
 def get_numeric_columns(df):
     """
-    Return numeric columns.
+    Return all numeric columns from the dataset.
     """
 
-    return df.select_dtypes(include="number").columns.tolist()
+    return df.select_dtypes(
+        include="number"
+    ).columns.tolist()
 
 
-# -----------------------------
-# BAR
-# -----------------------------
+# =========================================================
+# BAR CHART
+# =========================================================
+
 def create_bar_chart(df, column):
+    """
+    Create a bar chart showing the top 10 values.
+    """
+
+    data = _clean_column(df, column)
+
+    if data.empty:
+        return None
 
     value_counts = (
-        df[column]
+        data
         .value_counts()
         .head(10)
         .reset_index()
     )
 
-    value_counts.columns = [column, "Count"]
+    value_counts.columns = [
+        column,
+        "Count"
+    ]
 
     fig = px.bar(
         value_counts,
         x=column,
         y="Count",
         text="Count",
-        title=f"Top 10 Values - {column}"
+        title=f"Top 10 Values — {column}"
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_traces(
+        textposition="outside"
     )
 
-    return fig
+    fig.update_xaxes(
+        title_text=column
+    )
+
+    fig.update_yaxes(
+        title_text="Count"
+    )
+
+    return _apply_chart_layout(
+        fig,
+        f"Top 10 Values — {column}"
+    )
 
 
-# -----------------------------
-# PIE
-# -----------------------------
+# =========================================================
+# PIE CHART
+# =========================================================
+
 def create_pie_chart(df, column):
+    """
+    Create a pie chart showing the distribution
+    of the top 10 categorical values.
+    """
+
+    data = _clean_column(df, column)
+
+    if data.empty:
+        return None
 
     value_counts = (
-        df[column]
+        data
         .value_counts()
         .head(10)
         .reset_index()
     )
 
-    value_counts.columns = [column, "Count"]
+    value_counts.columns = [
+        column,
+        "Count"
+    ]
 
     fig = px.pie(
         value_counts,
         names=column,
         values="Count",
-        title=f"Top 10 Values - {column}"
+        title=f"Distribution — {column}",
+        hole=0.35
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_traces(
+        textposition="inside",
+        textinfo="percent+label"
     )
 
-    return fig
+    return _apply_chart_layout(
+        fig,
+        f"Distribution — {column}"
+    )
 
 
-# -----------------------------
-# LINE
-# -----------------------------
+# =========================================================
+# LINE CHART
+# =========================================================
+
 def create_line_chart(df, column):
+    """
+    Create a line chart showing the trend
+    of a numeric column.
+    """
+
+    if column not in df.columns:
+        return None
+
+    data = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).dropna()
+
+    if data.empty:
+        return None
+
+    chart_df = pd.DataFrame({
+        "Index": range(1, len(data) + 1),
+        column: data.values
+    })
 
     fig = px.line(
-        df,
+        chart_df,
+        x="Index",
         y=column,
+        markers=True,
         title=f"{column} Trend"
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_xaxes(
+        title_text="Record"
     )
 
-    return fig
+    fig.update_yaxes(
+        title_text=column
+    )
+
+    return _apply_chart_layout(
+        fig,
+        f"{column} Trend"
+    )
 
 
-# -----------------------------
+# =========================================================
 # HISTOGRAM
-# -----------------------------
+# =========================================================
+
 def create_histogram(df, column):
+    """
+    Create a histogram showing the distribution
+    of a numeric column.
+    """
+
+    if column not in df.columns:
+        return None
+
+    data = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).dropna()
+
+    if data.empty:
+        return None
+
+    chart_df = pd.DataFrame({
+        column: data
+    })
 
     fig = px.histogram(
-        df,
+        chart_df,
         x=column,
+        nbins=30,
         title=f"{column} Distribution"
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_xaxes(
+        title_text=column
     )
 
-    return fig
+    fig.update_yaxes(
+        title_text="Frequency"
+    )
+
+    return _apply_chart_layout(
+        fig,
+        f"{column} Distribution"
+    )
 
 
-# -----------------------------
-# SCATTER
-# -----------------------------
+# =========================================================
+# SCATTER PLOT
+# =========================================================
+
 def create_scatter_chart(df, x_column, y_column):
+    """
+    Create a scatter plot comparing two numeric columns.
+    """
+
+    if (
+        x_column not in df.columns
+        or y_column not in df.columns
+    ):
+        return None
+
+    chart_df = df[
+        [x_column, y_column]
+    ].copy()
+
+    chart_df[x_column] = pd.to_numeric(
+        chart_df[x_column],
+        errors="coerce"
+    )
+
+    chart_df[y_column] = pd.to_numeric(
+        chart_df[y_column],
+        errors="coerce"
+    )
+
+    chart_df = chart_df.dropna()
+
+    if chart_df.empty:
+        return None
 
     fig = px.scatter(
-        df,
+        chart_df,
         x=x_column,
         y=y_column,
-        title=f"{x_column} vs {y_column}"
+        title=f"{x_column} vs {y_column}",
+        trendline=None
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_xaxes(
+        title_text=x_column
     )
 
-    return fig
+    fig.update_yaxes(
+        title_text=y_column
+    )
+
+    return _apply_chart_layout(
+        fig,
+        f"{x_column} vs {y_column}"
+    )
 
 
-# -----------------------------
-# BOX
-# -----------------------------
+# =========================================================
+# BOX PLOT
+# =========================================================
+
 def create_box_plot(df, column):
+    """
+    Create a box plot for a numeric column.
+    """
+
+    if column not in df.columns:
+        return None
+
+    data = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).dropna()
+
+    if data.empty:
+        return None
+
+    chart_df = pd.DataFrame({
+        column: data
+    })
 
     fig = px.box(
-        df,
+        chart_df,
         y=column,
+        points="outliers",
         title=f"{column} Box Plot"
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5
+    fig.update_yaxes(
+        title_text=column
     )
 
-    return fig
+    return _apply_chart_layout(
+        fig,
+        f"{column} Box Plot"
+    )
+
+
+# =========================================================
+# CORRELATION HEATMAP
+# =========================================================
+
 def create_correlation_heatmap(df):
     """
     Create a correlation heatmap for numeric columns.
     """
 
-    numeric_df = df.select_dtypes(include="number")
+    numeric_df = df.select_dtypes(
+        include="number"
+    )
+
+    # At least two numeric columns are required
+    if numeric_df.shape[1] < 2:
+        return None
+
+    # Remove columns containing no valid numeric values
+    numeric_df = numeric_df.dropna(
+        axis=1,
+        how="all"
+    )
 
     if numeric_df.shape[1] < 2:
         return None
@@ -182,11 +409,15 @@ def create_correlation_heatmap(df):
         zmax=1
     )
 
-    fig.update_layout(
-        template="plotly_white",
-        title_x=0.5,
-        xaxis_title="Columns",
-        yaxis_title="Columns"
+    fig.update_xaxes(
+        title_text="Columns"
     )
 
-    return fig
+    fig.update_yaxes(
+        title_text="Columns"
+    )
+
+    return _apply_chart_layout(
+        fig,
+        "Correlation Heatmap"
+    )

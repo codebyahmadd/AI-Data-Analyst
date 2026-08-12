@@ -1,0 +1,11 @@
+OrderID,Product,Category,Quantity,Price,Order Date
+1,Laptop,Electronics,2,800,2025-01-05
+2,Mouse,Electronics,5,20,2025-01-15
+3,Keyboard,Electronics,3,50,2025-01-25
+4,Chair,Furniture,4,120,2025-02-04
+5,Table,Furniture,2,300,2025-02-14
+6,Phone,Electronics,3,600,2025-02-24
+7,Notebook,Stationery,10,5,2025-03-06
+8,Pen,Stationery,20,2,2025-03-16
+9,Monitor,Electronics,2,250,2025-03-26
+10,Desk,Furniture,1,400,2025-04-05

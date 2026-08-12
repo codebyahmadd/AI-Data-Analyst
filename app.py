@@ -9,6 +9,7 @@ from pages.overview import show_overview
 from pages.visualization import show_visualization
 from pages.insights import show_insights
 from pages.reports import show_reports
+from pages.chat import show_chat
 
 
 # -----------------------------
@@ -45,14 +46,15 @@ if uploaded_file is not None:
     # -----------------------------
     # Professional Tabs
     # -----------------------------
-    overview_tab, visualization_tab, insights_tab, reports_tab = st.tabs(
-        [
-            "📊 Overview",
-            "📈 Visualization",
-            "🤖 AI Insights",
-            "📄 Reports"
-        ]
-    )
+    overview_tab, visualization_tab, insights_tab, reports_tab, chat_tab = st.tabs(
+    [
+        "📊 Overview",
+        "📈 Visualization",
+        "🤖 AI Insights",
+        "📄 Reports",
+        "💬 Chat with Data"
+    ]
+)
 
     with overview_tab:
         show_overview(df)
@@ -65,3 +67,6 @@ if uploaded_file is not None:
 
     with reports_tab:
      show_reports(df)
+
+    with chat_tab:
+     show_chat(df)
