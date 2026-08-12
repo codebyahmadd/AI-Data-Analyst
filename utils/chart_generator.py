@@ -98,28 +98,12 @@ def get_chart_columns(df, max_unique=20):
 
 def get_numeric_columns(df):
     """
-    Return all columns that contain usable numeric data.
-
-    Handles numeric values stored as text and duplicate
-    column names safely.
+    Return unique numeric columns suitable for visualization.
     """
 
-    numeric_columns = []
-
-    for column in df.columns:
-
-        data = _get_column_series(df, column)
-
-        if data.empty:
-            continue
-
-        converted = pd.to_numeric(
-            data,
-            errors="coerce"
-        )
-
-        if converted.notna().any():
-            numeric_columns.append(column)
+    numeric_columns = df.select_dtypes(
+        include="number"
+    ).columns.tolist()
 
     # Remove duplicate column names
     return list(dict.fromkeys(numeric_columns))
@@ -325,89 +309,101 @@ def create_histogram(df, column):
 # SCATTER PLOT
 # =========================================================
 
+# =========================================================
+# SCATTER PLOT
+# =========================================================
+
 def create_scatter_chart(df, x_column, y_column):
     """
     Create a scatter plot comparing two numeric columns.
 
-    Handles:
-    - Duplicate column names
-    - Numeric values stored as text
-    - Missing values
-    - Invalid numeric values
-    - Same X/Y column selection
+    Handles duplicate column names safely and converts
+    selected columns into numeric values.
     """
 
-    if (
-        x_column not in df.columns
-        or y_column not in df.columns
-    ):
+    # Validate column names
+    if x_column not in df.columns or y_column not in df.columns:
         return None
 
-    # X and Y must be different
-    if x_column == y_column:
+    try:
+        # -------------------------------------------------
+        # Safely retrieve selected columns
+        # -------------------------------------------------
+        x_data = df.loc[:, x_column]
+        y_data = df.loc[:, y_column]
+
+        # If duplicate column names exist, pandas may return
+        # a DataFrame instead of a Series.
+        # Use the first matching column in that case.
+        if isinstance(x_data, pd.DataFrame):
+            x_data = x_data.iloc[:, 0]
+
+        if isinstance(y_data, pd.DataFrame):
+            y_data = y_data.iloc[:, 0]
+
+        # -------------------------------------------------
+        # Convert values to numeric
+        # -------------------------------------------------
+        x_data = pd.to_numeric(
+            x_data,
+            errors="coerce"
+        )
+
+        y_data = pd.to_numeric(
+            y_data,
+            errors="coerce"
+        )
+
+        # -------------------------------------------------
+        # Create clean dataframe
+        # -------------------------------------------------
+        chart_df = pd.DataFrame({
+            "X": x_data,
+            "Y": y_data
+        })
+
+        # Remove invalid/missing values
+        chart_df = chart_df.dropna()
+
+        if chart_df.empty:
+            return None
+
+        # -------------------------------------------------
+        # Create scatter plot
+        # -------------------------------------------------
+        fig = px.scatter(
+            chart_df,
+            x="X",
+            y="Y",
+            title=f"{x_column} vs {y_column}"
+        )
+
+        # -------------------------------------------------
+        # Axis labels
+        # -------------------------------------------------
+        fig.update_xaxes(
+            title_text=x_column
+        )
+
+        fig.update_yaxes(
+            title_text=y_column
+        )
+
+        # -------------------------------------------------
+        # Professional layout
+        # -------------------------------------------------
+        return _apply_chart_layout(
+            fig,
+            f"{x_column} vs {y_column}"
+        )
+
+    except Exception as e:
+
+        st.error(
+            f"Unable to create scatter plot: {str(e)}"
+        )
+
         return None
-
-    # Safely retrieve both columns as Series
-    x_data = _get_column_series(
-        df,
-        x_column
-    )
-
-    y_data = _get_column_series(
-        df,
-        y_column
-    )
-
-    if x_data.empty or y_data.empty:
-        return None
-
-    # Convert values to numeric
-    x_data = pd.to_numeric(
-        x_data,
-        errors="coerce"
-    )
-
-    y_data = pd.to_numeric(
-        y_data,
-        errors="coerce"
-    )
-
-    # Build a clean dataframe using neutral internal names.
-    # This avoids problems caused by duplicate source column names.
-    chart_df = pd.DataFrame({
-        "X": x_data.to_numpy(),
-        "Y": y_data.to_numpy()
-    })
-
-    # Remove invalid/missing records
-    chart_df = chart_df.dropna(
-        subset=["X", "Y"]
-    )
-
-    if chart_df.empty:
-        return None
-
-    # Create scatter plot
-    fig = px.scatter(
-        chart_df,
-        x="X",
-        y="Y",
-        title=f"{x_column} vs {y_column}"
-    )
-
-    fig.update_xaxes(
-        title_text=x_column
-    )
-
-    fig.update_yaxes(
-        title_text=y_column
-    )
-
-    return _apply_chart_layout(
-        fig,
-        f"{x_column} vs {y_column}"
-    )
-
 
 # =========================================================
 # BOX PLOT
