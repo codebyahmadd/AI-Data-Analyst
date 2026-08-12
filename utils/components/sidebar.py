@@ -8,15 +8,29 @@ def show_sidebar():
 
     with st.sidebar:
 
-        st.title("🤖 AI Data Analyst")
+        # -----------------------------
+        # Application Branding
+        # -----------------------------
+
+        st.markdown("## 🤖 AI Data Analyst")
+
+        st.caption("AI-Powered Data Analysis")
 
         st.markdown("---")
+
+        # -----------------------------
+        # Project Status
+        # -----------------------------
 
         st.subheader("📌 Project Status")
 
         st.success("🟢 Application Running")
 
         st.markdown("---")
+
+        # -----------------------------
+        # Dashboard Progress
+        # -----------------------------
 
         st.subheader("📊 Dashboard Progress")
 
@@ -26,14 +40,22 @@ def show_sidebar():
 
         st.markdown("---")
 
+        # -----------------------------
+        # Key Features
+        # -----------------------------
+
         st.subheader("✨ Key Features")
 
-        st.write("✅ Interactive Charts")
-        st.write("✅ AI Insights")
-        st.write("✅ Chat with Data")
-        st.write("✅ PDF Reports")
-        st.write("✅ Sales Forecasting")
+        st.write("📊 Interactive Charts")
+        st.write("🤖 AI Insights")
+        st.write("💬 Chat with Data")
+        st.write("📄 PDF Reports")
+        st.write("🔮 Sales Forecasting")
 
         st.markdown("---")
 
-        st.caption("Version 1.0.0")
+        # -----------------------------
+        # Version
+        # -----------------------------
+
+        st.caption("AI Data Analyst • Version 1.0.0")

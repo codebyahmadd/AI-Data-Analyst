@@ -6,19 +6,33 @@ def show_header():
     Display the application header.
     """
 
-    st.title("🤖 AI Data Analyst")
+    st.markdown("## 🤖 AI Data Analyst")
 
     st.markdown(
         """
-        ### AI-Powered Data Analysis Platform
+        **AI-Powered Data Analysis Platform**
 
-        Upload your dataset and get instant insights, visualizations,
-        and AI-powered recommendations.
+        Transform your data into meaningful insights, interactive
+        visualizations, forecasts, and AI-powered analysis.
         """
     )
 
-    st.info(
-        "🚀 Upload a CSV file to start exploring your data."
+    feature_col1, feature_col2, feature_col3, feature_col4 = st.columns(4)
+
+    with feature_col1:
+        st.info("📊 **Data Analysis**")
+
+    with feature_col2:
+        st.info("📈 **Interactive Visualizations**")
+
+    with feature_col3:
+        st.info("🤖 **AI Insights**")
+
+    with feature_col4:
+        st.info("💬 **Chat with Data**")
+
+    st.success(
+        "🚀 **Ready to analyze?** Upload a CSV dataset below to get started."
     )
 
     st.divider()
