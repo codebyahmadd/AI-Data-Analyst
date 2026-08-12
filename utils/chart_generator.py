@@ -7,16 +7,38 @@ import plotly.graph_objects as go
 # HELPER FUNCTIONS
 # =========================================================
 
+def _get_column_series(df, column):
+    """
+    Safely return a selected dataframe column as a Series.
+
+    Handles datasets that may contain duplicate column names.
+    """
+
+    if column not in df.columns:
+        return pd.Series(dtype="object")
+
+    data = df.loc[:, column]
+
+    # If duplicate column names exist, Pandas returns a DataFrame.
+    # Use the first matching column safely.
+    if isinstance(data, pd.DataFrame):
+        data = data.iloc[:, 0]
+
+    return data
+
+
 def _clean_column(df, column):
     """
     Return a cleaned copy of a selected column.
     Removes missing values.
     """
 
-    if column not in df.columns:
+    data = _get_column_series(df, column)
+
+    if data.empty:
         return pd.Series(dtype="object")
 
-    return df[column].dropna()
+    return data.dropna()
 
 
 def _apply_chart_layout(fig, title):
@@ -56,16 +78,18 @@ def get_chart_columns(df, max_unique=20):
 
     for column in df.columns:
 
-        # Ignore completely empty columns
-        if df[column].dropna().empty:
+        data = _get_column_series(df, column)
+
+        if data.dropna().empty:
             continue
 
-        unique_count = df[column].nunique(dropna=True)
+        unique_count = data.nunique(dropna=True)
 
         if unique_count <= max_unique:
             suitable_columns.append(column)
 
-    return suitable_columns
+    # Remove duplicate column names
+    return list(dict.fromkeys(suitable_columns))
 
 
 # =========================================================
@@ -74,12 +98,31 @@ def get_chart_columns(df, max_unique=20):
 
 def get_numeric_columns(df):
     """
-    Return all numeric columns from the dataset.
+    Return all columns that contain usable numeric data.
+
+    Handles numeric values stored as text and duplicate
+    column names safely.
     """
 
-    return df.select_dtypes(
-        include="number"
-    ).columns.tolist()
+    numeric_columns = []
+
+    for column in df.columns:
+
+        data = _get_column_series(df, column)
+
+        if data.empty:
+            continue
+
+        converted = pd.to_numeric(
+            data,
+            errors="coerce"
+        )
+
+        if converted.notna().any():
+            numeric_columns.append(column)
+
+    # Remove duplicate column names
+    return list(dict.fromkeys(numeric_columns))
 
 
 # =========================================================
@@ -190,11 +233,13 @@ def create_line_chart(df, column):
     of a numeric column.
     """
 
-    if column not in df.columns:
+    data = _get_column_series(df, column)
+
+    if data.empty:
         return None
 
     data = pd.to_numeric(
-        df[column],
+        data,
         errors="coerce"
     ).dropna()
 
@@ -203,7 +248,7 @@ def create_line_chart(df, column):
 
     chart_df = pd.DataFrame({
         "Index": range(1, len(data) + 1),
-        column: data.values
+        column: data.to_numpy()
     })
 
     fig = px.line(
@@ -238,11 +283,13 @@ def create_histogram(df, column):
     of a numeric column.
     """
 
-    if column not in df.columns:
+    data = _get_column_series(df, column)
+
+    if data.empty:
         return None
 
     data = pd.to_numeric(
-        df[column],
+        data,
         errors="coerce"
     ).dropna()
 
@@ -250,7 +297,7 @@ def create_histogram(df, column):
         return None
 
     chart_df = pd.DataFrame({
-        column: data
+        column: data.to_numpy()
     })
 
     fig = px.histogram(
@@ -281,6 +328,13 @@ def create_histogram(df, column):
 def create_scatter_chart(df, x_column, y_column):
     """
     Create a scatter plot comparing two numeric columns.
+
+    Handles:
+    - Duplicate column names
+    - Numeric values stored as text
+    - Missing values
+    - Invalid numeric values
+    - Same X/Y column selection
     """
 
     if (
@@ -289,31 +343,56 @@ def create_scatter_chart(df, x_column, y_column):
     ):
         return None
 
-    chart_df = df[
-        [x_column, y_column]
-    ].copy()
+    # X and Y must be different
+    if x_column == y_column:
+        return None
 
-    chart_df[x_column] = pd.to_numeric(
-        chart_df[x_column],
+    # Safely retrieve both columns as Series
+    x_data = _get_column_series(
+        df,
+        x_column
+    )
+
+    y_data = _get_column_series(
+        df,
+        y_column
+    )
+
+    if x_data.empty or y_data.empty:
+        return None
+
+    # Convert values to numeric
+    x_data = pd.to_numeric(
+        x_data,
         errors="coerce"
     )
 
-    chart_df[y_column] = pd.to_numeric(
-        chart_df[y_column],
+    y_data = pd.to_numeric(
+        y_data,
         errors="coerce"
     )
 
-    chart_df = chart_df.dropna()
+    # Build a clean dataframe using neutral internal names.
+    # This avoids problems caused by duplicate source column names.
+    chart_df = pd.DataFrame({
+        "X": x_data.to_numpy(),
+        "Y": y_data.to_numpy()
+    })
+
+    # Remove invalid/missing records
+    chart_df = chart_df.dropna(
+        subset=["X", "Y"]
+    )
 
     if chart_df.empty:
         return None
 
+    # Create scatter plot
     fig = px.scatter(
         chart_df,
-        x=x_column,
-        y=y_column,
-        title=f"{x_column} vs {y_column}",
-        trendline=None
+        x="X",
+        y="Y",
+        title=f"{x_column} vs {y_column}"
     )
 
     fig.update_xaxes(
@@ -339,11 +418,16 @@ def create_box_plot(df, column):
     Create a box plot for a numeric column.
     """
 
-    if column not in df.columns:
+    data = _get_column_series(
+        df,
+        column
+    )
+
+    if data.empty:
         return None
 
     data = pd.to_numeric(
-        df[column],
+        data,
         errors="coerce"
     ).dropna()
 
@@ -351,7 +435,7 @@ def create_box_plot(df, column):
         return None
 
     chart_df = pd.DataFrame({
-        column: data
+        column: data.to_numpy()
     })
 
     fig = px.box(

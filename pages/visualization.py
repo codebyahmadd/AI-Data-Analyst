@@ -14,6 +14,32 @@ from utils.chart_generator import (
 )
 
 
+# =========================================================
+# SAFE COLUMN HELPER
+# =========================================================
+
+def _get_column_series(df, column):
+    """
+    Safely return a selected dataframe column as a Series.
+
+    Handles duplicate column names.
+    """
+
+    if column not in df.columns:
+        return pd.Series(dtype="object")
+
+    data = df.loc[:, column]
+
+    if isinstance(data, pd.DataFrame):
+        data = data.iloc[:, 0]
+
+    return data
+
+
+# =========================================================
+# DATE PARSER
+# =========================================================
+
 def parse_date_series(series):
     """
     Safely convert a column into datetime values.
@@ -24,20 +50,31 @@ def parse_date_series(series):
     - Unix timestamps
     """
 
+    # Ensure the input is a Series
+    if isinstance(series, pd.DataFrame):
+        series = series.iloc[:, 0]
+
     # Numeric date values
     if pd.api.types.is_numeric_dtype(series):
 
-        numeric = pd.to_numeric(series, errors="coerce")
+        numeric = pd.to_numeric(
+            series,
+            errors="coerce"
+        )
 
         valid = numeric.dropna()
 
         if valid.empty:
-            return pd.Series(pd.NaT, index=series.index)
+            return pd.Series(
+                pd.NaT,
+                index=series.index
+            )
 
         median_value = valid.median()
 
         # Excel serial date
         if 20000 <= median_value <= 60000:
+
             return pd.to_datetime(
                 numeric,
                 unit="D",
@@ -46,7 +83,12 @@ def parse_date_series(series):
             )
 
         # Unix timestamp in seconds
-        if 1_000_000_000 <= median_value <= 2_000_000_000:
+        if (
+            1_000_000_000
+            <= median_value
+            <= 2_000_000_000
+        ):
+
             return pd.to_datetime(
                 numeric,
                 unit="s",
@@ -54,7 +96,10 @@ def parse_date_series(series):
             )
 
         # Do not treat small arbitrary numbers as dates
-        return pd.Series(pd.NaT, index=series.index)
+        return pd.Series(
+            pd.NaT,
+            index=series.index
+        )
 
     # Text/object dates
     return pd.to_datetime(
@@ -63,6 +108,10 @@ def parse_date_series(series):
         format="mixed"
     )
 
+
+# =========================================================
+# DATE COLUMN DETECTION
+# =========================================================
 
 def detect_date_column(df):
     """
@@ -87,21 +136,34 @@ def detect_date_column(df):
 
         if column in df.columns:
 
-            converted = parse_date_series(df[column])
+            series = _get_column_series(
+                df,
+                column
+            )
+
+            converted = parse_date_series(
+                series
+            )
 
             valid_ratio = converted.notna().mean()
 
             if valid_ratio >= 0.5:
                 return column
 
-    # Then check only non-numeric columns
-    # to avoid treating Quantity/Price as dates.
+    # Then check non-numeric columns
     for column in df.columns:
 
-        if pd.api.types.is_numeric_dtype(df[column]):
+        series = _get_column_series(
+            df,
+            column
+        )
+
+        if pd.api.types.is_numeric_dtype(series):
             continue
 
-        converted = parse_date_series(df[column])
+        converted = parse_date_series(
+            series
+        )
 
         valid_ratio = converted.notna().mean()
 
@@ -111,13 +173,20 @@ def detect_date_column(df):
     return None
 
 
+# =========================================================
+# SALES DATAFRAME
+# =========================================================
+
 def create_sales_dataframe(df):
     """
     Create a dataframe containing Date and Sales.
+
     Sales = Quantity × Price
     """
 
-    date_column = detect_date_column(df)
+    date_column = detect_date_column(
+        df
+    )
 
     if date_column is None:
         return None, None
@@ -130,17 +199,33 @@ def create_sales_dataframe(df):
 
     sales_df = df.copy()
 
+    # Safely retrieve source columns
+    date_series = _get_column_series(
+        sales_df,
+        date_column
+    )
+
+    quantity_series = _get_column_series(
+        sales_df,
+        "Quantity"
+    )
+
+    price_series = _get_column_series(
+        sales_df,
+        "Price"
+    )
+
     sales_df["Date"] = parse_date_series(
-    sales_df[date_column]
+        date_series
     )
 
     sales_df["Quantity"] = pd.to_numeric(
-        sales_df["Quantity"],
+        quantity_series,
         errors="coerce"
     )
 
     sales_df["Price"] = pd.to_numeric(
-        sales_df["Price"],
+        price_series,
         errors="coerce"
     )
 
@@ -150,25 +235,36 @@ def create_sales_dataframe(df):
     )
 
     sales_df = sales_df.dropna(
-        subset=["Date", "Sales"]
+        subset=[
+            "Date",
+            "Sales"
+        ]
     )
 
     return sales_df, date_column
 
+
+# =========================================================
+# SALES FORECAST
+# =========================================================
 
 def show_sales_forecast(df):
     """
     Display sales trend and simple future sales forecast.
     """
 
-    st.subheader("🔮 Sales Trend & Forecast")
+    st.subheader(
+        "🔮 Sales Trend & Forecast"
+    )
 
     st.caption(
         "Analyze historical sales performance and estimate "
         "future sales based on the available time-series data."
     )
 
-    sales_df, date_column = create_sales_dataframe(df)
+    sales_df, date_column = create_sales_dataframe(
+        df
+    )
 
     # =====================================================
     # VALIDATION
@@ -195,8 +291,8 @@ def show_sales_forecast(df):
     if sales_df.empty:
 
         st.warning(
-            "⚠️ No valid date and sales records are available "
-            "for forecasting."
+            "⚠️ No valid date and sales records are "
+            "available for forecasting."
         )
 
         return
@@ -230,8 +326,8 @@ def show_sales_forecast(df):
     if len(daily_sales) < 2:
 
         st.warning(
-            "⚠️ At least two different dates are required "
-            "for trend analysis."
+            "⚠️ At least two different dates are "
+            "required for trend analysis."
         )
 
         return
@@ -240,7 +336,9 @@ def show_sales_forecast(df):
     # SALES TREND
     # =====================================================
 
-    st.markdown("### 📈 Historical Sales Trend")
+    st.markdown(
+        "### 📈 Historical Sales Trend"
+    )
 
     trend_fig = px.line(
         daily_sales,
@@ -268,7 +366,9 @@ def show_sales_forecast(df):
     # FORECAST SETTINGS
     # =====================================================
 
-    st.markdown("### ⚙️ Forecast Settings")
+    st.markdown(
+        "### ⚙️ Forecast Settings"
+    )
 
     forecast_days = st.slider(
         "Select Forecast Period",
@@ -282,7 +382,6 @@ def show_sales_forecast(df):
     # SIMPLE MOVING AVERAGE FORECAST
     # =====================================================
 
-    # Use recent observations
     window_size = min(
         7,
         len(daily_sales)
@@ -305,14 +404,18 @@ def show_sales_forecast(df):
 
     forecast_df = pd.DataFrame({
         "Date": future_dates,
-        "Forecast": [average_sales] * forecast_days
+        "Forecast": [
+            average_sales
+        ] * forecast_days
     })
 
     # =====================================================
     # FORECAST CHART
     # =====================================================
 
-    st.markdown("### 🔮 Sales Forecast")
+    st.markdown(
+        "### 🔮 Sales Forecast"
+    )
 
     historical_plot = daily_sales[
         ["Date", "Sales"]
@@ -391,7 +494,9 @@ def show_sales_forecast(df):
     # FORECAST TABLE
     # =====================================================
 
-    st.markdown("### 📋 Forecast Details")
+    st.markdown(
+        "### 📋 Forecast Details"
+    )
 
     display_forecast = forecast_df.copy()
 
@@ -412,12 +517,18 @@ def show_sales_forecast(df):
     )
 
 
+# =========================================================
+# MAIN VISUALIZATION
+# =========================================================
+
 def show_visualization(df):
     """
     Display all data visualizations.
     """
 
-    st.subheader("📊 Advanced Data Visualization")
+    st.subheader(
+        "📊 Advanced Data Visualization"
+    )
 
     st.caption(
         "Explore your dataset using interactive charts "
@@ -428,7 +539,9 @@ def show_visualization(df):
     # SALES TREND & FORECAST
     # =====================================================
 
-    show_sales_forecast(df)
+    show_sales_forecast(
+        df
+    )
 
     st.divider()
 
@@ -436,7 +549,9 @@ def show_visualization(df):
     # CHART SELECTOR
     # =====================================================
 
-    st.subheader("📊 Custom Data Visualization")
+    st.subheader(
+        "📊 Custom Data Visualization"
+    )
 
     chart_type = st.selectbox(
         "Select Chart",
@@ -450,8 +565,18 @@ def show_visualization(df):
         ]
     )
 
-    categorical_columns = get_chart_columns(df)
-    numeric_columns = get_numeric_columns(df)
+    # Get chart columns safely
+    categorical_columns = list(
+        dict.fromkeys(
+            get_chart_columns(df)
+        )
+    )
+
+    numeric_columns = list(
+        dict.fromkeys(
+            get_numeric_columns(df)
+        )
+    )
 
     # =====================================================
     # BAR CHART
@@ -472,10 +597,19 @@ def show_visualization(df):
                 column
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            if fig is not None:
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ Unable to create the bar chart "
+                    "with the selected column."
+                )
 
         else:
 
@@ -502,10 +636,19 @@ def show_visualization(df):
                 column
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            if fig is not None:
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ Unable to create the pie chart "
+                    "with the selected column."
+                )
 
         else:
 
@@ -532,10 +675,19 @@ def show_visualization(df):
                 column
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            if fig is not None:
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ Unable to create the line chart "
+                    "with the selected column."
+                )
 
         else:
 
@@ -562,10 +714,19 @@ def show_visualization(df):
                 column
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            if fig is not None:
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ Unable to create the histogram "
+                    "with the selected column."
+                )
 
         else:
 
@@ -587,22 +748,47 @@ def show_visualization(df):
                 key="scatter_x"
             )
 
-            y_column = st.selectbox(
-                "Y-Axis",
-                numeric_columns,
-                key="scatter_y"
-            )
+            # Remove X-axis column from Y-axis choices
+            y_options = [
+                column
+                for column in numeric_columns
+                if column != x_column
+            ]
 
-            fig = create_scatter_chart(
-                df,
-                x_column,
-                y_column
-            )
+            if y_options:
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+                y_column = st.selectbox(
+                    "Y-Axis",
+                    y_options,
+                    key="scatter_y"
+                )
+
+                fig = create_scatter_chart(
+                    df,
+                    x_column,
+                    y_column
+                )
+
+                if fig is not None:
+
+                    st.plotly_chart(
+                        fig,
+                        use_container_width=True
+                    )
+
+                else:
+
+                    st.warning(
+                        "⚠️ Unable to create the scatter plot "
+                        "with the selected columns."
+                    )
+
+            else:
+
+                st.warning(
+                    "⚠️ Please select two different "
+                    "numeric columns."
+                )
 
         else:
 
@@ -630,10 +816,19 @@ def show_visualization(df):
                 column
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            if fig is not None:
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ Unable to create the box plot "
+                    "with the selected column."
+                )
 
         else:
 
